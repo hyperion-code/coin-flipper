@@ -36,6 +36,46 @@ function randomFlip() {
   return Math.random() < 0.5 ? 'heads' : 'tails';
 }
 
+// Build synthetic flip history using clustered activity blocks every few minutes.
+function generateFakeFlipHistory(options = {}) {
+  const weeksBack = Number(options.weeksBack) > 0 ? Number(options.weeksBack) : 3;
+  const minGapMinutes = Number(options.minGapMinutes) > 0 ? Number(options.minGapMinutes) : 2;
+  const maxGapMinutes = Number(options.maxGapMinutes) >= minGapMinutes
+    ? Number(options.maxGapMinutes)
+    : 5;
+
+  const now = Date.now();
+  const start = now - weeksBack * 7 * 24 * 60 * 60 * 1000;
+  const history = [];
+
+  let cursor = start;
+
+  while (cursor < now) {
+    const clusterCount = 2 + Math.floor(Math.random() * 4); // 2-5 flips per cluster
+
+    for (let i = 0; i < clusterCount && cursor < now; i += 1) {
+      // Small spacing inside a cluster to feel like a short active burst.
+      const burstSpacingMs = (20 + Math.floor(Math.random() * 100)) * 1000;
+      cursor += burstSpacingMs;
+
+      if (cursor >= now) {
+        break;
+      }
+
+      history.push({
+        timestamp: new Date(cursor),
+        result: randomFlip()
+      });
+    }
+
+    // Jump to the next activity block by a few minutes.
+    const gapMinutes = minGapMinutes + Math.floor(Math.random() * (maxGapMinutes - minGapMinutes + 1));
+    cursor += gapMinutes * 60 * 1000;
+  }
+
+  return history;
+}
+
 // API Routes
 
 // Public: Flip the coin
@@ -135,6 +175,30 @@ app.post('/api/admin/reset', (req, res) => {
   res.json({
     success: true,
     message: 'All data reset'
+  });
+});
+
+// Admin: Generate fake random historical flips for the last few weeks.
+app.post('/api/admin/generate-fake-history', (req, res) => {
+  const generatedHistory = generateFakeFlipHistory(req.body || {});
+
+  coinState.flipHistory = generatedHistory;
+
+  if (generatedHistory.length > 0) {
+    const latest = generatedHistory[generatedHistory.length - 1];
+    coinState.lastFlip = latest.timestamp;
+    coinState.result = latest.result;
+  } else {
+    coinState.lastFlip = null;
+    coinState.result = null;
+  }
+
+  res.json({
+    success: true,
+    generatedCount: generatedHistory.length,
+    firstFlip: generatedHistory.length > 0 ? generatedHistory[0].timestamp : null,
+    lastFlip: generatedHistory.length > 0 ? generatedHistory[generatedHistory.length - 1].timestamp : null,
+    message: `Generated ${generatedHistory.length} fake historical flips.`
   });
 });
 
