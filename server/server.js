@@ -36,6 +36,14 @@ function randomFlip() {
   return Math.random() < 0.5 ? 'heads' : 'tails';
 }
 
+function normalizePlayerName(name) {
+  if (typeof name !== 'string') {
+    return '';
+  }
+
+  return name.trim().slice(0, 40);
+}
+
 // Build synthetic flip history using clustered activity blocks every few minutes.
 function generateFakeFlipHistory(options = {}) {
   const weeksBack = Number(options.weeksBack) > 0 ? Number(options.weeksBack) : 3;
@@ -47,6 +55,18 @@ function generateFakeFlipHistory(options = {}) {
   const now = Date.now();
   const start = now - weeksBack * 7 * 24 * 60 * 60 * 1000;
   const history = [];
+  const fakeNames = [
+    'Avery',
+    'Jordan',
+    'Riley',
+    'Taylor',
+    'Parker',
+    'Casey',
+    'Morgan',
+    'Cameron',
+    'Quinn',
+    'Reese'
+  ];
 
   let cursor = start;
 
@@ -64,8 +84,19 @@ function generateFakeFlipHistory(options = {}) {
 
       history.push({
         timestamp: new Date(cursor),
-        result: randomFlip()
+        result: randomFlip(),
+        playerName: fakeNames[Math.floor(Math.random() * fakeNames.length)],
+        betSide: null,
+        betAmount: null,
+        didBetWin: null
       });
+
+      if (Math.random() < 0.35) {
+        const currentFlip = history[history.length - 1];
+        currentFlip.betSide = randomFlip();
+        currentFlip.betAmount = Number((5 + Math.random() * 95).toFixed(2));
+        currentFlip.didBetWin = currentFlip.betSide === currentFlip.result;
+      }
     }
 
     // Jump to the next activity block by a few minutes.
@@ -81,6 +112,34 @@ function generateFakeFlipHistory(options = {}) {
 // Public: Flip the coin
 app.post('/api/flip', (req, res) => {
   const now = new Date();
+  const playerName = normalizePlayerName(req.body?.playerName);
+  const betSide = req.body?.betSide ?? null;
+  const rawBetAmount = req.body?.betAmount;
+
+  if (!playerName) {
+    return res.status(400).json({ error: 'Player name is required.' });
+  }
+
+  if (betSide !== null && betSide !== 'heads' && betSide !== 'tails') {
+    return res.status(400).json({ error: 'Invalid bet side. Must be "heads" or "tails".' });
+  }
+
+  let betAmount = null;
+  if (rawBetAmount !== undefined && rawBetAmount !== null && rawBetAmount !== '') {
+    const parsedAmount = Number(rawBetAmount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+      return res.status(400).json({ error: 'Bet amount must be a non-negative number.' });
+    }
+    betAmount = Number(parsedAmount.toFixed(2));
+  }
+
+  if (betAmount !== null && betSide === null) {
+    return res.status(400).json({ error: 'Select heads or tails when entering a bet amount.' });
+  }
+
+  if (betSide !== null && betAmount === null) {
+    betAmount = 0;
+  }
   
   // Determine outcome
   let outcome;
@@ -94,14 +153,23 @@ app.post('/api/flip', (req, res) => {
   // Update state
   coinState.lastFlip = now;
   coinState.result = outcome;
+  const didBetWin = betSide ? betSide === outcome : null;
   coinState.flipHistory.push({
     timestamp: now,
-    result: outcome
+    result: outcome,
+    playerName,
+    betSide,
+    betAmount,
+    didBetWin
   });
 
   res.json({
     result: outcome,
-    timestamp: now
+    timestamp: now,
+    playerName,
+    betSide,
+    betAmount,
+    didBetWin
   });
 });
 

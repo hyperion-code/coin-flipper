@@ -97,6 +97,48 @@
       font-weight: bold;
     }
 
+    .flip-form {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      text-align: left;
+    }
+
+    .flip-form .full {
+      grid-column: 1 / -1;
+    }
+
+    .flip-form label {
+      font-size: 0.85em;
+      color: #666;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .flip-form input,
+    .flip-form select {
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.95em;
+      outline: none;
+    }
+
+    .flip-form input:focus,
+    .flip-form select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.16);
+    }
+
+    .note {
+      grid-column: 1 / -1;
+      font-size: 0.8em;
+      color: #888;
+      margin-top: -2px;
+    }
+
     button {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
@@ -179,6 +221,13 @@
       min-width: 80px;
     }
 
+    .flip-meta {
+      font-size: 0.85em;
+      color: #666;
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
     .flip-time {
       color: #999;
       font-size: 0.9em;
@@ -235,6 +284,26 @@
     </div>
     
     <div class="result" id="result"></div>
+
+    <div class="flip-form">
+      <div class="full">
+        <label for="playerName">Your name (required)</label>
+        <input id="playerName" maxlength="40" placeholder="Enter your name" autocomplete="name" />
+      </div>
+      <div>
+        <label for="betSide">Optional bet side</label>
+        <select id="betSide">
+          <option value="">No bet</option>
+          <option value="heads">Heads</option>
+          <option value="tails">Tails</option>
+        </select>
+      </div>
+      <div>
+        <label for="betAmount">Optional bet amount</label>
+        <input id="betAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+      </div>
+      <div class="note">Name is required to flip. Bets are optional.</div>
+    </div>
     
     <button id="flipBtn" onclick="flipCoin()">FLIP COIN</button>
     
@@ -309,6 +378,26 @@
       const flipBtn = document.getElementById('flipBtn');
       const coinDisplay = document.getElementById('coinDisplay');
       const result = document.getElementById('result');
+      const playerNameInput = document.getElementById('playerName');
+      const betSideSelect = document.getElementById('betSide');
+      const betAmountInput = document.getElementById('betAmount');
+      const playerName = playerNameInput.value.trim();
+      const betSideValue = betSideSelect.value || null;
+      const betAmountRaw = betAmountInput.value.trim();
+
+      if (!playerName) {
+        result.textContent = 'Please enter your name before flipping.';
+        result.classList.add('show');
+        isFlipping = false;
+        return;
+      }
+
+      if (betAmountRaw && !betSideValue) {
+        result.textContent = 'Choose heads or tails if you enter a bet amount.';
+        result.classList.add('show');
+        isFlipping = false;
+        return;
+      }
 
       flipBtn.disabled = true;
       coinDisplay.classList.add('spinning');
@@ -319,7 +408,23 @@
       result.classList.remove('show');
 
       try {
-        const response = await fetch('/api/flip', { method: 'POST' });
+        const payload = {
+          playerName,
+          betSide: betSideValue,
+          betAmount: betAmountRaw ? Number(betAmountRaw) : null
+        };
+
+        const response = await fetch('/api/flip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Flip failed');
+        }
+
         const data = await response.json();
 
         setTimeout(() => {
@@ -328,7 +433,12 @@
           coinDisplay.classList.add(resultClass);
           coinDisplay.querySelector('.coin-emoji').textContent = '🪙';
           coinDisplay.querySelector('.coin-text').textContent = data.result.toUpperCase();
-          result.textContent = `${data.result === 'heads' ? 'HEADS' : 'TAILS'} ✓`;
+          if (data.betSide) {
+            const betResultText = data.didBetWin ? 'BET WON' : 'BET LOST';
+            result.textContent = `${data.playerName}: ${data.result.toUpperCase()} (${betResultText})`;
+          } else {
+            result.textContent = `${data.playerName}: ${data.result.toUpperCase()}`;
+          }
           result.classList.add('show');
 
           // Preset only affects one flip; clear local state after result is shown.
@@ -345,7 +455,7 @@
         coinDisplay.classList.remove('spinning');
         coinDisplay.querySelector('.coin-emoji').textContent = '❌';
         coinDisplay.querySelector('.coin-text').textContent = 'ERROR';
-        result.textContent = 'Error occurred';
+        result.textContent = error.message || 'Error occurred';
         flipBtn.disabled = false;
         isFlipping = false;
       }
@@ -370,15 +480,26 @@
         if (recentFlips.length === 0) {
           historyList.innerHTML = '<p style="color: #999; text-align: center;">No flips yet</p>';
         } else {
-          historyList.innerHTML = recentFlips.map((flip, index) => {
+          historyList.innerHTML = recentFlips.map((flip) => {
             const date = new Date(flip.timestamp);
             const timeStr = date.toLocaleTimeString();
             const dateStr = date.toLocaleDateString();
             const resultEmoji = flip.result === 'heads' ? '🪙' : '🪙';
             const resultText = flip.result.toUpperCase();
+            const playerText = flip.playerName ? `By: ${flip.playerName}` : 'By: Unknown';
+            let betText = 'No bet';
+            if (flip.betSide) {
+              const amountText = typeof flip.betAmount === 'number' ? ` ($${flip.betAmount.toFixed(2)})` : '';
+              const verdict = flip.didBetWin === true ? ' - won' : flip.didBetWin === false ? ' - lost' : '';
+              betText = `Bet: ${flip.betSide.toUpperCase()}${amountText}${verdict}`;
+            }
+
             return `
               <div class="flip-item">
-                <span class="flip-result">${resultEmoji} ${resultText}</span>
+                <div>
+                  <div class="flip-result">${resultEmoji} ${resultText}</div>
+                  <div class="flip-meta">${playerText}<br>${betText}</div>
+                </div>
                 <span class="flip-time">${timeStr}<br>${dateStr}</span>
               </div>
             `;

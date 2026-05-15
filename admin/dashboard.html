@@ -385,12 +385,14 @@
               <tr>
                 <th>#</th>
                 <th>Time</th>
+                <th>Player</th>
+                <th>Bet</th>
                 <th>Result</th>
               </tr>
             </thead>
             <tbody id="historyTable">
               <tr>
-                <td colspan="3" style="text-align: center; color: #999;">No flips yet</td>
+                <td colspan="5" style="text-align: center; color: #999;">No flips yet</td>
               </tr>
             </tbody>
           </table>
@@ -488,13 +490,15 @@
         // Update flip history table
         const tbody = document.getElementById('historyTable');
         if (history.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #999;">No flips yet</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">No flips yet</td></tr>';
         } else {
           const recentFlips = history.slice(-10).reverse();
           tbody.innerHTML = recentFlips.map((flip, index) => `
             <tr>
               <td>${history.length - history.indexOf(flip)}</td>
               <td class="time-cell">${new Date(flip.timestamp).toLocaleString()}</td>
+              <td>${flip.playerName || 'Unknown'}</td>
+              <td>${flip.betSide ? `${flip.betSide.toUpperCase()}${typeof flip.betAmount === 'number' ? ` ($${flip.betAmount.toFixed(2)})` : ''}${flip.didBetWin === true ? ' - won' : flip.didBetWin === false ? ' - lost' : ''}` : 'No bet'}</td>
               <td>
                 <span class="result-badge ${flip.result}">
                   ${flip.result.toUpperCase()}
