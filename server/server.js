@@ -14,6 +14,15 @@ app.use(bodyParser.json());
 app.use('/public', express.static(path.join(__dirname, '../public')));
 app.use('/admin', express.static(path.join(__dirname, '../admin')));
 
+// Friendly entry routes for hosted deployments.
+app.get('/', (req, res) => {
+  res.redirect('/public/index.html');
+});
+
+app.get('/admin', (req, res) => {
+  res.redirect('/admin/dashboard.html');
+});
+
 // In-memory data store
 let coinState = {
   lastFlip: null,
