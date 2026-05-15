@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coin Flipper</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+    }
+
+    .coin-display {
+      width: 200px;
+      height: 200px;
+      margin: 40px auto;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      transition: transform 0.6s ease;
+      min-height: 200px;
+    }
+
+    .coin-emoji {
+      font-size: 3.5em;
+      margin-bottom: 5px;
+    }
+
+    .coin-text {
+      font-size: 1.8em;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .coin-display.spinning {
+      animation: spin 0.6s ease-in-out;
+    }
+
+    .coin-display.heads {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .coin-display.tails {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+
+    @keyframes spin {
+      0% { transform: rotateY(0deg) rotateX(0deg); }
+      50% { transform: rotateY(360deg) rotateX(180deg); }
+      100% { transform: rotateY(720deg) rotateX(0deg); }
+    }
+
+    .result {
+      margin-top: 30px;
+      font-size: 1.2em;
+      color: #666;
+      min-height: 30px;
+    }
+
+    .result.show {
+      font-size: 1.5em;
+      color: #667eea;
+      font-weight: bold;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 1.1em;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .stats {
+      margin-top: 40px;
+      padding-top: 30px;
+      border-top: 2px solid #eee;
+      text-align: left;
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      color: #666;
+    }
+
+    .stat-value {
+      font-weight: bold;
+      color: #333;
+    }
+
+    .flip-count {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 10px;
+      color: #667eea;
+      font-weight: bold;
+    }
+
+    .flip-history {
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 2px solid #eee;
+      text-align: left;
+    }
+
+    .flip-history h3 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.1em;
+    }
+
+    .flip-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid #667eea;
+    }
+
+    .flip-result {
+      font-weight: bold;
+      font-size: 1.2em;
+      color: #667eea;
+      min-width: 80px;
+    }
+
+    .flip-time {
+      color: #999;
+      font-size: 0.9em;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🪙 Coin Flipper</h1>
+    
+    <div class="coin-display" id="coinDisplay">
+      <div class="coin-emoji">?</div>
+      <div class="coin-text"></div>
+    </div>
+    
+    <div class="result" id="result"></div>
+    
+    <button id="flipBtn" onclick="flipCoin()">FLIP COIN</button>
+    
+    <div class="stats">
+      <div class="flip-count">
+        Total Flips: <span id="totalFlips">0</span>
+      </div>
+      <div class="stat-item">
+        <span>Heads:</span>
+        <span class="stat-value" id="headsCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span>Tails:</span>
+        <span class="stat-value" id="tailsCount">0</span>
+      </div>
+
+      <div class="flip-history">
+        <h3>📜 Recent Flips</h3>
+        <div id="flipHistoryList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isFlipping = false;
+
+    async function flipCoin() {
+      if (isFlipping) return;
+
+      isFlipping = true;
+      const flipBtn = document.getElementById('flipBtn');
+      const coinDisplay = document.getElementById('coinDisplay');
+      const result = document.getElementById('result');
+
+      flipBtn.disabled = true;
+      coinDisplay.classList.add('spinning');
+      coinDisplay.classList.remove('heads', 'tails');
+      coinDisplay.querySelector('.coin-emoji').textContent = '🔄';
+      coinDisplay.querySelector('.coin-text').textContent = '';
+      result.textContent = '';
+      result.classList.remove('show');
+
+      try {
+        const response = await fetch('/api/flip', { method: 'POST' });
+        const data = await response.json();
+
+        setTimeout(() => {
+          coinDisplay.classList.remove('spinning');
+          const resultClass = data.result === 'heads' ? 'heads' : 'tails';
+          coinDisplay.classList.add(resultClass);
+          coinDisplay.querySelector('.coin-emoji').textContent = '🪙';
+          coinDisplay.querySelector('.coin-text').textContent = data.result.toUpperCase();
+          result.textContent = `${data.result === 'heads' ? 'HEADS' : 'TAILS'} ✓`;
+          result.classList.add('show');
+          flipBtn.disabled = false;
+          isFlipping = false;
+
+          updateStats();
+        }, 600);
+      } catch (error) {
+        console.error('Error:', error);
+        coinDisplay.classList.remove('spinning');
+        coinDisplay.querySelector('.coin-emoji').textContent = '❌';
+        coinDisplay.querySelector('.coin-text').textContent = 'ERROR';
+        result.textContent = 'Error occurred';
+        flipBtn.disabled = false;
+        isFlipping = false;
+      }
+    }
+
+    async function updateStats() {
+      try {
+        const response = await fetch('/api/flip-history');
+        const history = await response.json();
+
+        const headsCount = history.filter(f => f.result === 'heads').length;
+        const tailsCount = history.filter(f => f.result === 'tails').length;
+
+        document.getElementById('totalFlips').textContent = history.length;
+        document.getElementById('headsCount').textContent = headsCount;
+        document.getElementById('tailsCount').textContent = tailsCount;
+
+        // Update flip history display (show last 5 flips in reverse order)
+        const recentFlips = history.slice(-5).reverse();
+        const historyList = document.getElementById('flipHistoryList');
+        
+        if (recentFlips.length === 0) {
+          historyList.innerHTML = '<p style="color: #999; text-align: center;">No flips yet</p>';
+        } else {
+          historyList.innerHTML = recentFlips.map((flip, index) => {
+            const date = new Date(flip.timestamp);
+            const timeStr = date.toLocaleTimeString();
+            const dateStr = date.toLocaleDateString();
+            const resultEmoji = flip.result === 'heads' ? '🪙' : '🪙';
+            const resultText = flip.result.toUpperCase();
+            return `
+              <div class="flip-item">
+                <span class="flip-result">${resultEmoji} ${resultText}</span>
+                <span class="flip-time">${timeStr}<br>${dateStr}</span>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('Error updating stats:', error);
+      }
+    }
+
+    // Initial load
+    updateStats();
+  </script>
+</body>
+</html>
