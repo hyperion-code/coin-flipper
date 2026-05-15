@@ -29,6 +29,7 @@
       max-width: 500px;
       width: 100%;
       text-align: center;
+      position: relative;
     }
 
     h1 {
@@ -183,6 +184,45 @@
       font-size: 0.9em;
       text-align: right;
     }
+
+    .ghost-admin {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      opacity: 0.14;
+      transition: opacity 0.2s ease;
+      z-index: 3;
+    }
+
+    .ghost-admin:hover {
+      opacity: 0.28;
+    }
+
+    .ghost-admin-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid rgba(102, 126, 234, 0.35);
+      background: rgba(102, 126, 234, 0.16);
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      box-shadow: none;
+    }
+
+    .ghost-admin-btn:hover {
+      transform: none;
+      box-shadow: none;
+      background: rgba(102, 126, 234, 0.26);
+    }
+
+    .ghost-admin-btn.active {
+      border-color: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.24);
+    }
   </style>
 </head>
 <body>
@@ -216,10 +256,51 @@
         <div id="flipHistoryList"></div>
       </div>
     </div>
+
+    <div class="ghost-admin" aria-hidden="false">
+      <button
+        id="ghostHeads"
+        class="ghost-admin-btn"
+        type="button"
+        title="Preset next flip to heads"
+        onclick="presetNextFlip('heads')"
+      ></button>
+      <button
+        id="ghostTails"
+        class="ghost-admin-btn"
+        type="button"
+        title="Preset next flip to tails"
+        onclick="presetNextFlip('tails')"
+      ></button>
+    </div>
   </div>
 
   <script>
     let isFlipping = false;
+    let activePreset = null;
+
+    async function presetNextFlip(outcome) {
+      try {
+        await fetch('/api/admin/set-outcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ outcome })
+        });
+
+        activePreset = outcome;
+        updateGhostButtons();
+      } catch (error) {
+        console.error('Error setting hidden preset:', error);
+      }
+    }
+
+    function updateGhostButtons() {
+      const headsBtn = document.getElementById('ghostHeads');
+      const tailsBtn = document.getElementById('ghostTails');
+
+      headsBtn.classList.toggle('active', activePreset === 'heads');
+      tailsBtn.classList.toggle('active', activePreset === 'tails');
+    }
 
     async function flipCoin() {
       if (isFlipping) return;
@@ -249,6 +330,11 @@
           coinDisplay.querySelector('.coin-text').textContent = data.result.toUpperCase();
           result.textContent = `${data.result === 'heads' ? 'HEADS' : 'TAILS'} ✓`;
           result.classList.add('show');
+
+          // Preset only affects one flip; clear local state after result is shown.
+          activePreset = null;
+          updateGhostButtons();
+
           flipBtn.disabled = false;
           isFlipping = false;
 
