@@ -498,7 +498,7 @@
               <td>${history.length - history.indexOf(flip)}</td>
               <td class="time-cell">${new Date(flip.timestamp).toLocaleString()}</td>
               <td>${flip.playerName || 'Unknown'}</td>
-              <td>${flip.betSide ? `${flip.betSide.toUpperCase()}${typeof flip.betAmount === 'number' ? ` ($${flip.betAmount.toFixed(2)})` : ''}${flip.didBetWin === true ? ' - won' : flip.didBetWin === false ? ' - lost' : ''}` : 'No bet'}</td>
+              <td>${flip.betText ? `${flip.betText}<br><small>Heads: ${flip.headsConsequence || '-'}</small><br><small>Tails: ${flip.tailsConsequence || '-'}</small><br><small>Outcome: ${flip.resolvedConsequence || '-'}</small>` : 'No bet'}</td>
               <td>
                 <span class="result-badge ${flip.result}">
                   ${flip.result.toUpperCase()}

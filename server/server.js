@@ -86,16 +86,20 @@ function generateFakeFlipHistory(options = {}) {
         timestamp: new Date(cursor),
         result: randomFlip(),
         playerName: fakeNames[Math.floor(Math.random() * fakeNames.length)],
-        betSide: null,
-        betAmount: null,
-        didBetWin: null
+        betText: null,
+        headsConsequence: null,
+        tailsConsequence: null,
+        resolvedConsequence: null
       });
 
       if (Math.random() < 0.35) {
         const currentFlip = history[history.length - 1];
-        currentFlip.betSide = randomFlip();
-        currentFlip.betAmount = Number((5 + Math.random() * 95).toFixed(2));
-        currentFlip.didBetWin = currentFlip.betSide === currentFlip.result;
+        currentFlip.betText = 'Friendly challenge';
+        currentFlip.headsConsequence = 'Buys snacks for the group';
+        currentFlip.tailsConsequence = 'Washes dishes tonight';
+        currentFlip.resolvedConsequence = currentFlip.result === 'heads'
+          ? currentFlip.headsConsequence
+          : currentFlip.tailsConsequence;
       }
     }
 
@@ -113,32 +117,12 @@ function generateFakeFlipHistory(options = {}) {
 app.post('/api/flip', (req, res) => {
   const now = new Date();
   const playerName = normalizePlayerName(req.body?.playerName);
-  const betSide = req.body?.betSide ?? null;
-  const rawBetAmount = req.body?.betAmount;
+  const betText = typeof req.body?.betText === 'string' ? req.body.betText.trim().slice(0, 140) : '';
+  const headsConsequence = typeof req.body?.headsConsequence === 'string' ? req.body.headsConsequence.trim().slice(0, 180) : '';
+  const tailsConsequence = typeof req.body?.tailsConsequence === 'string' ? req.body.tailsConsequence.trim().slice(0, 180) : '';
 
   if (!playerName) {
     return res.status(400).json({ error: 'Player name is required.' });
-  }
-
-  if (betSide !== null && betSide !== 'heads' && betSide !== 'tails') {
-    return res.status(400).json({ error: 'Invalid bet side. Must be "heads" or "tails".' });
-  }
-
-  let betAmount = null;
-  if (rawBetAmount !== undefined && rawBetAmount !== null && rawBetAmount !== '') {
-    const parsedAmount = Number(rawBetAmount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
-      return res.status(400).json({ error: 'Bet amount must be a non-negative number.' });
-    }
-    betAmount = Number(parsedAmount.toFixed(2));
-  }
-
-  if (betAmount !== null && betSide === null) {
-    return res.status(400).json({ error: 'Select heads or tails when entering a bet amount.' });
-  }
-
-  if (betSide !== null && betAmount === null) {
-    betAmount = 0;
   }
   
   // Determine outcome
@@ -153,23 +137,29 @@ app.post('/api/flip', (req, res) => {
   // Update state
   coinState.lastFlip = now;
   coinState.result = outcome;
-  const didBetWin = betSide ? betSide === outcome : null;
+  const normalizedBetText = betText || null;
+  const normalizedHeadsConsequence = headsConsequence || null;
+  const normalizedTailsConsequence = tailsConsequence || null;
+  const resolvedConsequence = outcome === 'heads' ? normalizedHeadsConsequence : normalizedTailsConsequence;
+
   coinState.flipHistory.push({
     timestamp: now,
     result: outcome,
     playerName,
-    betSide,
-    betAmount,
-    didBetWin
+    betText: normalizedBetText,
+    headsConsequence: normalizedHeadsConsequence,
+    tailsConsequence: normalizedTailsConsequence,
+    resolvedConsequence: resolvedConsequence || null
   });
 
   res.json({
     result: outcome,
     timestamp: now,
     playerName,
-    betSide,
-    betAmount,
-    didBetWin
+    betText: normalizedBetText,
+    headsConsequence: normalizedHeadsConsequence,
+    tailsConsequence: normalizedTailsConsequence,
+    resolvedConsequence: resolvedConsequence || null
   });
 });
 

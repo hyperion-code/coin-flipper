@@ -117,7 +117,8 @@
     }
 
     .flip-form input,
-    .flip-form select {
+    .flip-form select,
+    .flip-form textarea {
       width: 100%;
       border: 1px solid #ddd;
       border-radius: 8px;
@@ -126,8 +127,14 @@
       outline: none;
     }
 
+    .flip-form textarea {
+      resize: vertical;
+      min-height: 64px;
+    }
+
     .flip-form input:focus,
-    .flip-form select:focus {
+    .flip-form select:focus,
+    .flip-form textarea:focus {
       border-color: #667eea;
       box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.16);
     }
@@ -291,18 +298,18 @@
         <input id="playerName" maxlength="40" placeholder="Enter your name" autocomplete="name" />
       </div>
       <div>
-        <label for="betSide">Optional bet side</label>
-        <select id="betSide">
-          <option value="">No bet</option>
-          <option value="heads">Heads</option>
-          <option value="tails">Tails</option>
-        </select>
+        <label for="headsConsequence">If heads wins...</label>
+        <input id="headsConsequence" maxlength="180" placeholder="Consequence for heads" />
       </div>
       <div>
-        <label for="betAmount">Optional bet amount</label>
-        <input id="betAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+        <label for="tailsConsequence">If tails wins...</label>
+        <input id="tailsConsequence" maxlength="180" placeholder="Consequence for tails" />
       </div>
-      <div class="note">Name is required to flip. Bets are optional.</div>
+      <div class="full">
+        <label for="betText">Optional text bet</label>
+        <textarea id="betText" maxlength="140" placeholder="Write out the bet terms"></textarea>
+      </div>
+      <div class="note">Name is required. Bet text and consequences are optional, but saved in history if provided.</div>
     </div>
     
     <button id="flipBtn" onclick="flipCoin()">FLIP COIN</button>
@@ -379,21 +386,16 @@
       const coinDisplay = document.getElementById('coinDisplay');
       const result = document.getElementById('result');
       const playerNameInput = document.getElementById('playerName');
-      const betSideSelect = document.getElementById('betSide');
-      const betAmountInput = document.getElementById('betAmount');
+      const betTextInput = document.getElementById('betText');
+      const headsConsequenceInput = document.getElementById('headsConsequence');
+      const tailsConsequenceInput = document.getElementById('tailsConsequence');
       const playerName = playerNameInput.value.trim();
-      const betSideValue = betSideSelect.value || null;
-      const betAmountRaw = betAmountInput.value.trim();
+      const betText = betTextInput.value.trim();
+      const headsConsequence = headsConsequenceInput.value.trim();
+      const tailsConsequence = tailsConsequenceInput.value.trim();
 
       if (!playerName) {
         result.textContent = 'Please enter your name before flipping.';
-        result.classList.add('show');
-        isFlipping = false;
-        return;
-      }
-
-      if (betAmountRaw && !betSideValue) {
-        result.textContent = 'Choose heads or tails if you enter a bet amount.';
         result.classList.add('show');
         isFlipping = false;
         return;
@@ -410,8 +412,9 @@
       try {
         const payload = {
           playerName,
-          betSide: betSideValue,
-          betAmount: betAmountRaw ? Number(betAmountRaw) : null
+          betText: betText || null,
+          headsConsequence: headsConsequence || null,
+          tailsConsequence: tailsConsequence || null
         };
 
         const response = await fetch('/api/flip', {
@@ -433,12 +436,9 @@
           coinDisplay.classList.add(resultClass);
           coinDisplay.querySelector('.coin-emoji').textContent = '🪙';
           coinDisplay.querySelector('.coin-text').textContent = data.result.toUpperCase();
-          if (data.betSide) {
-            const betResultText = data.didBetWin ? 'BET WON' : 'BET LOST';
-            result.textContent = `${data.playerName}: ${data.result.toUpperCase()} (${betResultText})`;
-          } else {
-            result.textContent = `${data.playerName}: ${data.result.toUpperCase()}`;
-          }
+          const baseText = `${data.playerName}: ${data.result.toUpperCase()}`;
+          const consequenceText = data.resolvedConsequence ? ` -> ${data.resolvedConsequence}` : '';
+          result.textContent = `${baseText}${consequenceText}`;
           result.classList.add('show');
 
           // Preset only affects one flip; clear local state after result is shown.
@@ -487,18 +487,19 @@
             const resultEmoji = flip.result === 'heads' ? '🪙' : '🪙';
             const resultText = flip.result.toUpperCase();
             const playerText = flip.playerName ? `By: ${flip.playerName}` : 'By: Unknown';
-            let betText = 'No bet';
-            if (flip.betSide) {
-              const amountText = typeof flip.betAmount === 'number' ? ` ($${flip.betAmount.toFixed(2)})` : '';
-              const verdict = flip.didBetWin === true ? ' - won' : flip.didBetWin === false ? ' - lost' : '';
-              betText = `Bet: ${flip.betSide.toUpperCase()}${amountText}${verdict}`;
+            let betInfoText = 'No text bet';
+            if (flip.betText) {
+              const headsText = flip.headsConsequence ? `Heads: ${flip.headsConsequence}` : 'Heads: -';
+              const tailsText = flip.tailsConsequence ? `Tails: ${flip.tailsConsequence}` : 'Tails: -';
+              const outcomeText = flip.resolvedConsequence ? `Outcome: ${flip.resolvedConsequence}` : 'Outcome: -';
+              betInfoText = `Bet: ${flip.betText}<br>${headsText}<br>${tailsText}<br>${outcomeText}`;
             }
 
             return `
               <div class="flip-item">
                 <div>
                   <div class="flip-result">${resultEmoji} ${resultText}</div>
-                  <div class="flip-meta">${playerText}<br>${betText}</div>
+                  <div class="flip-meta">${playerText}<br>${betInfoText}</div>
                 </div>
                 <span class="flip-time">${timeStr}<br>${dateStr}</span>
               </div>
